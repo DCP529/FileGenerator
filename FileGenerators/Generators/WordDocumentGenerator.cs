@@ -1,48 +1,33 @@
-﻿using Filegenerator.Interfaces;
-using NPOI.Util;
-using NPOI.XWPF.UserModel;
+﻿using DocumentFormat.OpenXml.Packaging;
+using DocumentFormat.OpenXml;
+using Filegenerator.Interfaces;
 
-namespace Filegenerator.Generators;
-
-/// <summary>
-/// Генератор вордовских документов
-/// </summary>
-public class WordDocumentGenerator : IDocumentGenerator
+namespace Filegenerator.Generators
 {
     /// <summary>
-    /// Генерация вордовского документа
+    /// Генератор вордовских документов с использованием Open XML SDK
     /// </summary>
-    /// <param name="directoryPath">Путь куда будет сгенерирован файл</param>
-    /// <param name="textData">Текстовое наполенение</param>
-    /// <param name="numericData"></param>
-    /// <param name="imagePath">Картинка</param>
-    /// <param name="totalSize"></param>
-    public void Generate(string directoryPath, string textData, decimal numericData, string imagePath, ref long totalSize)
+    public class WordDocumentGenerator : IDocumentGenerator
     {
-        var filePath = Path.Combine(directoryPath, "example.docx");
-
-        using (var doc = new XWPFDocument())
+        /// <summary>
+        /// Генерация вордовского документа
+        /// </summary>
+        /// <param name="directoryPath">Путь куда будет сгенерирован файл</param>
+        /// <param name="sourceFile">Путь к исходному файлу, если необходимо использовать его содержимое</param>
+        public void Generate(string directoryPath, string sourceFile)
         {
-            var para = doc.CreateParagraph();
-            var run = para.CreateRun();
-
-            run.SetText(textData);
-
-            using (var imgStream = File.OpenRead(imagePath))
+            // Создаем новый документ
+            using (WordprocessingDocument firstDocument = WordprocessingDocument.Open(sourceFile, false))
             {
-                var imgPara = doc.CreateParagraph();
-                var imgRun = imgPara.CreateRun();
-
-                imgRun.AddPicture(imgStream, (int)PictureType.PNG, "example.png", Units.ToEMU(200), Units.ToEMU(200));
-            }
-
-            using (var fs = new FileStream(filePath, FileMode.Create))
-            {
-                doc.Write(fs);
+                foreach (var part in firstDocument.Parts)
+                {
+                    // Создаем новый файл и копируем содержимое из исходного
+                    using (WordprocessingDocument newDocument = WordprocessingDocument.Create(directoryPath, WordprocessingDocumentType.Document))
+                    {
+                        newDocument.AddPart(part.OpenXmlPart, part.RelationshipId);
+                    }
+                }
             }
         }
-
-        // Обновляем общий размер файлов
-        totalSize += new FileInfo(filePath).Length;
     }
 }

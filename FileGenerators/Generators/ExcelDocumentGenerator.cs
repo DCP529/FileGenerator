@@ -1,51 +1,45 @@
-﻿using Filegenerator.Interfaces;
-using NPOI.SS.UserModel;
-using NPOI.XSSF.UserModel;
+﻿using DocumentFormat.OpenXml;
+using DocumentFormat.OpenXml.Packaging;
+using DocumentFormat.OpenXml.Spreadsheet;
+using System.IO;
+using System.Xml;
+using Filegenerator.Interfaces;
 
-namespace Filegenerator.Generators;
-
-/// <summary>
-/// Генератор екселевских документов
-/// </summary>
 public class ExcelDocumentGenerator : IDocumentGenerator
 {
     /// <summary>
     /// Генерация excel(xlsx) файла
     /// </summary>
     /// <param name="directoryPath">Путь куда будет сгенерирован файл</param>
-    /// <param name="textData"></param>
-    /// <param name="numericData">число</param>
-    /// <param name="imagePath"></param>
-    /// <param name="totalSize"></param>
-    public void Generate(string directoryPath, string textData, decimal numericData, string imagePath,
-        ref long totalSize)
+    /// <param name="sourceFile">Путь к исходному файлу, если необходимо использовать его содержимое</param>
+    public void Generate(string directoryPath, string sourceFile)
     {
-        var filePath = Path.Combine(directoryPath, "example.xlsx");
-
-        var workbook = new XSSFWorkbook();
-
-        var sheet = workbook.CreateSheet("Sheet1");
-
-        var value = textData.Split();
-
-        var rand = new Random();
-        
-        for (var row = 0; row < 100; row++)
+        using (var sourceStream = File.Open(sourceFile, FileMode.Open, FileAccess.Read))
+        using (var destinationStream = File.Create(directoryPath))
         {
-            var excelRow = sheet.CreateRow(row);
-            for (var col = 0; col < 100; col++)
+            // Открываем исходный файл
+            using (var sourceDocument = SpreadsheetDocument.Open(sourceStream, false))
             {
-                var cell = excelRow.CreateCell(col);
-                cell.SetCellValue(value[col + rand.NextInt64(1, 1000)]); // Пример генерации случайных чисел
+                // Создаем новый документ Excel
+                using (var destinationDocument = SpreadsheetDocument.Create(destinationStream, SpreadsheetDocumentType.Workbook))
+                {
+                    // Создаем новую часть Workbook для целевого документа
+                    var destinationWorkbookPart = destinationDocument.AddWorkbookPart();
+
+                    // Копируем содержимое Workbook из исходного документа в целевой
+                    using (var writer = destinationWorkbookPart.GetStream(FileMode.Create))
+                    {
+                        sourceDocument.WorkbookPart.Workbook.Save(writer);
+                    }
+
+                    // Копируем содержимое всех листов из исходного документа в новый документ
+                    foreach (var sheetPart in sourceDocument.WorkbookPart.WorksheetParts)
+                    {
+                        var newSheetPart = destinationWorkbookPart.AddNewPart<WorksheetPart>();
+                        sheetPart.Worksheet.Save(newSheetPart);
+                    }
+                }
             }
         }
-
-        using (var fs = new FileStream(filePath, FileMode.Create))
-        {
-            workbook.Write(fs);
-        }
-
-        // Обновляем общий размер файлов
-        totalSize += new FileInfo(filePath).Length;
     }
 }

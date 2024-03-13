@@ -1,9 +1,5 @@
 ﻿using Bogus;
-using Filegenerator.Enums;
 using Filegenerator.Factories;
-using SixLabors.ImageSharp;
-using SixLabors.ImageSharp.PixelFormats;
-using SixLabors.ImageSharp.Processing;
 
 namespace Filegenerator;
 
@@ -13,6 +9,7 @@ class Program
 
     static void Main(string[] args)
     {
+        var sourceDirectory = "D:\\Киги";
         var rootDirectory = "D:\\GeneratedFiles";
 
         if (!Directory.Exists(rootDirectory))
@@ -20,86 +17,81 @@ class Program
             Directory.CreateDirectory(rootDirectory);
         }
 
-        var totalSize = 0L;
-        var mustHaveSize = 10L * 1024 * 1024 * 1024;
+        long folderSize;
+        var tenGBInBytes = 10L * 1024 * 1024 * 1024; 
 
-        // Пока общий размер файлов не достигнет 10 ГБ
-        while (totalSize < mustHaveSize)
+        try
         {
-            var textData = Faker.Lorem.Sentences(10_000);
-            var numericData = Faker.Random.Decimal();
-            GenerateFiles(rootDirectory, textData, numericData, 0, ref totalSize);
+            Parallel.ForEach(Directory.GetFiles(sourceDirectory),
+                (filePath, state) =>
+                {
+                    folderSize = GetDirectorySize(rootDirectory);
+
+                    if (folderSize <= tenGBInBytes)
+                    {
+                        try
+                        {
+                            GenerateFiles(rootDirectory, filePath, 0);
+                        }
+                        catch (Exception e)
+                        {
+                            Console.WriteLine($"Какойто файлик не прошел, а точнее {filePath}");
+                            throw;
+                        }
+                    }
+                    else
+                    {
+                        state.Stop();
+                    }
+                });
+        }
+        finally
+        {
+            Console.WriteLine("Папка заполнена, генерация завершена.");
+        }
+    }
+
+    static long GetDirectorySize(string directoryPath)
+    {
+        long size = 0;
+
+        var files = Directory.GetFiles(directoryPath, "*", SearchOption.AllDirectories);
+
+        FileInfo fileInfo;
+        foreach (var file in files)
+        {
+            fileInfo = new FileInfo(file);
+            size += fileInfo.Length;
         }
 
-        Console.WriteLine("Генерация завершена.");
+        return size;
     }
 
     /// <summary>
     /// Метод генерации всех видов файлов со вложенностью в глубину 5 папок
     /// </summary>
     /// <param name="directoryPath">Путь сохранения</param>
-    /// <param name="textData">Содержимый текст в файлах</param>
-    /// <param name="numericData">Числа в экселе</param>
     /// <param name="depth">Глубина вложенности</param>
-    /// <param name="totalSize"></param>
-    private static void GenerateFiles(string directoryPath, string textData, decimal numericData, int depth,
-        ref long totalSize)
+    private static void GenerateFiles(string directoryPath, string filePath, int depth)
     {
         while (depth <= 5)
         {
             var directorySubName = Faker.Lorem.Word();
-
             var directoryName = $"Level_{depth}_{directorySubName}";
             var directoryPathWithDepth = Path.Combine(directoryPath, directoryName);
-
             Directory.CreateDirectory(directoryPathWithDepth);
 
-            var imagePath = GeneratePhoto();
-            var fileType = GetRandomFileType().ToString();
+            var fileType = Path.GetExtension(filePath);
 
-            for (var i = 0; i < 10; i++)
-            {
-                var documentGenerator = DocumentGeneratorFactory.CreateDocumentGenerator(fileType);
-                documentGenerator.Generate(directoryPath, textData, numericData, imagePath, ref totalSize);
+            var newFileName = $"{directorySubName}{fileType}";
+            var newPath = Path.Combine(directoryPathWithDepth, newFileName);
 
-                directoryPath = directoryPathWithDepth;
-            }
+            var documentGenerator = DocumentGeneratorFactory.CreateDocumentGenerator(fileType);
+            documentGenerator.Generate(newPath, filePath);
+
+            GenerateFiles(directoryPathWithDepth, newPath, depth + 1);
 
             depth++;
         }
-    }
-
-    /// <summary>
-    /// Получение рандомного генератора файла
-    /// </summary>
-    /// <returns></returns>
-    static FileType GetRandomFileType()
-    {
-        var random = new Random();
-        var fileTypes = Enum.GetValues(typeof(FileType));
-
-        return (FileType)fileTypes.GetValue(random.Next(fileTypes.Length))!;
-    }
-
-    /// <summary>
-    /// Генерация изображения
-    /// </summary>
-    /// <returns>Возвращает путь к созданной фотографиии</returns>
-    private static string GeneratePhoto()
-    {
-        const int width = 800;
-        const int height = 600;
-        const string outputPath = "output.png";
-
-        using (Image<Rgba32> image = new Image<Rgba32>(width, height))
-        {
-            // Заполняем изображение белым цветом
-            image.Mutate(ctx => ctx.BackgroundColor(Color.Azure));
-
-            // Сохраняем изображение
-            image.Save(outputPath); // Сохраняем в формате PNG
-        }
-
-        return outputPath;
     }
 }

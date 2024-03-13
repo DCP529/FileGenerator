@@ -14,16 +14,12 @@ public static class DocumentGeneratorFactory
     /// <param name="fileType">Тип файла</param>
     public static IDocumentGenerator CreateDocumentGenerator(string fileType)
     {
-        switch (fileType)
+        return fileType switch
         {
-            case "Word":
-                return new WordDocumentGenerator();
-            case "Excel":
-                return new ExcelDocumentGenerator();
-            case "PDF":
-                return new PdfDocumentGenerator();
-            default:
-                throw new ArgumentException("Unsupported file type");
-        }
+            ".docx" => new WordDocumentGenerator(),
+            ".xlsx" => new ExcelDocumentGenerator(),
+            ".pdf" => new PdfDocumentGenerator(),
+            _ => throw new ArgumentException("Unsupported file type")
+        };
     }
 }
