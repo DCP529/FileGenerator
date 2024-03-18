@@ -17,12 +17,12 @@ namespace Filegenerator.Generators
         public void Generate(string directoryPath, string sourceFile)
         {
             // Создаем новый документ
-            using (WordprocessingDocument firstDocument = WordprocessingDocument.Open(sourceFile, false))
+            using (var firstDocument = WordprocessingDocument.Open(sourceFile, false))
             {
                 foreach (var part in firstDocument.Parts)
                 {
                     // Создаем новый файл и копируем содержимое из исходного
-                    using (WordprocessingDocument newDocument = WordprocessingDocument.Create(directoryPath, WordprocessingDocumentType.Document))
+                    using (var newDocument = WordprocessingDocument.Create(directoryPath, WordprocessingDocumentType.Document))
                     {
                         newDocument.AddPart(part.OpenXmlPart, part.RelationshipId);
                     }
