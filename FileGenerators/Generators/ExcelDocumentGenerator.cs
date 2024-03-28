@@ -1,9 +1,8 @@
 ﻿using DocumentFormat.OpenXml;
 using DocumentFormat.OpenXml.Packaging;
-using DocumentFormat.OpenXml.Spreadsheet;
-using System.IO;
-using System.Xml;
 using Filegenerator.Interfaces;
+
+namespace Filegenerator.Generators;
 
 public class ExcelDocumentGenerator : IDocumentGenerator
 {

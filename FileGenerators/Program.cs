@@ -7,7 +7,7 @@ namespace Filegenerator
     class Program
     {
         private static readonly Faker Faker = new("ru");
-
+        private static string[] files = Array.Empty<string>();
         static async Task Main(string[] args)
         {
             //внимательно с урлом в гугл диске, в конце должен быть идентификатор файла
@@ -23,14 +23,15 @@ namespace Filegenerator
             }
 
             long folderSize;
-            var tenGBInBytes = 10L * 1024 * 1024 * 1024;
+            var tenGBInBytes = 12L * 1024 * 1024;
 
             try
             {
                 await FileManager.DownloadArchiveAsync(sourceArchiveUrl, sourceDirectory);
                 sourceDirectory = FileManager.ExtractArchive(sourceDirectory);
 
-                Parallel.ForEach(Directory.GetFiles(sourceDirectory), (filePath, state) =>
+                files = Directory.GetFiles(sourceDirectory);
+                Parallel.ForEach(files, (filePath, state) =>
                 {
                     folderSize = GetDirectorySize(rootDirectory);
 
@@ -101,7 +102,7 @@ namespace Filegenerator
                 var directoryName = $"Level_{depth}_{directorySubName}";
                 var directoryPathWithDepth = Path.Combine(directoryPath, directoryName);
                 Directory.CreateDirectory(directoryPathWithDepth);
-
+                
                 var fileType = Path.GetExtension(filePath);
 
                 var newFileName = $"{directorySubName}{fileType}";
@@ -109,6 +110,19 @@ namespace Filegenerator
 
                 var documentGenerator = DocumentGeneratorFactory.CreateDocumentGenerator(fileType);
                 documentGenerator.Generate(newPath, filePath);
+
+                for (var i = 0; i < Random.Shared.Next(1, 8); i++)
+                {
+                    var fileIndex = Random.Shared.Next(1, 50);
+                    var someFileType = Path.GetExtension(files[fileIndex]);
+                    
+                    directorySubName = Faker.Lorem.Word();
+                    var newSomeFileName = $"{directorySubName}{someFileType}";
+                    var newSomePath = Path.Combine(directoryPathWithDepth, newSomeFileName);
+                    
+                    documentGenerator = DocumentGeneratorFactory.CreateDocumentGenerator(someFileType);
+                    documentGenerator.Generate(newSomePath, files[fileIndex]);
+                }
 
                 GenerateFiles(directoryPathWithDepth, newPath, depth + 1);
 
